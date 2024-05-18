@@ -8,18 +8,26 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 services:
-  backend:
+  server:
     build:
-      context: backend
-    # flask requires SIGINT to stop gracefully
-    # (default stop signal from Compose is SIGTERM)
-    stop_signal: SIGINT
+      context: app
+    command: python3 /app/budgeter.py
     ports:
-      - 8000:8000
-    # `depends_on` tells Docker Compose to start the database before your application. 
+      - 50051:50051
+    secrets:
+      - db-password
     depends_on:
       db:
         condition: service_healthy
+
+  client:
+    build:
+      context: app
+    command: python3 /app/budgeter_client.py
+    depends_on:
+      - server
+    restart: on-failure:3
+
   db:
     image: postgres
     restart: always
@@ -35,6 +43,9 @@ services:
       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
     expose:
       - 5432
+    # Remove later
+    ports:
+      - 5432:5432
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 10s
@@ -44,9 +55,9 @@ services:
 volumes:
   # The `db-data` volume persists the database data between container restarts
   db-data:
-  
+
+
 secrets:
   # used to set the database password
   db-password:
     file: db/password.txt
-
