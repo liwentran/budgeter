@@ -1,0 +1,35 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+// Interface exported by the server.
+service Budgeter {
+  // A simple RPC that accepts a RecordTransactionsRequest message, records the
+  // transactions, and returns a RecordTransactionsReply
+  rpc RecordTransactions(RecordTransactionsRequest)
+      returns (RecordTransactionsReply) {}
+}
+
+// A Transaction message
+message Transaction {
+  google.protobuf.Timestamp date = 1;
+  string envelope = 2;
+  string account = 3;
+  string name = 4;
+  string notes = 5;
+  float amount = 6;
+  string details = 7;
+}
+
+// A RecordTransactionsRequest message is the request to a RecordTransactions
+// rpc. It contains a list of transactions.
+message RecordTransactionsRequest {
+  // A list of Transactions
+  repeated Transaction transactions = 1;
+}
+
+// A RecordTransactionsReply message is the response to a RecordTransactions
+// rpc. It contains the number of transactions received.
+message RecordTransactionsReply {
+  // The number of transactions received
+  int32 transactions_count = 1;
+}
