@@ -3,8 +3,11 @@
 from concurrent import futures
 import logging
 import sys
+from time import sleep
+import threading
 
 import grpc
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 import db
 import protos.budgeter_pb2 as budgeter_pb2
 import protos.budgeter_pb2_grpc as budgeter_pb2_grpc
@@ -42,12 +45,46 @@ class BudgeterServicer(budgeter_pb2_grpc.BudgeterServicer):
         return budgeter_pb2.RecordTransactionsReply(transactions_count=num_transaction)
 
 
+def _toggle_health(health_servicer: health.HealthServicer, service: str):
+    next_status = health_pb2.HealthCheckResponse.SERVING
+    while True:
+        if next_status == health_pb2.HealthCheckResponse.SERVING:
+            next_status = health_pb2.HealthCheckResponse.NOT_SERVING
+        else:
+            next_status = health_pb2.HealthCheckResponse.SERVING
+
+        health_servicer.set(service, next_status)
+        sleep(5)
+
+
+def _configure_health_server(server: grpc.Server):
+    #  We use the non-blocking implementation to avoid thread starvation.
+    health_servicer = health.HealthServicer(
+        experimental_non_blocking=True,
+        experimental_thread_pool=futures.ThreadPoolExecutor(max_workers=10),
+    )
+    health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
+
+    # Use a daemon thread to toggle health status
+    toggle_health_status_thread = threading.Thread(
+        target=_toggle_health,
+        args=(health_servicer, "Budgeter"),
+        daemon=True,
+    )
+    toggle_health_status_thread.start()
+
+
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     budgeter_pb2_grpc.add_BudgeterServicer_to_server(BudgeterServicer(), server)
+
+    _configure_health_server(server)
+
+    # Create a tuple of all of the services we want to export via reflection.
     SERVICE_NAMES = (
         budgeter_pb2.DESCRIPTOR.services_by_name["Budgeter"].full_name,
         reflection.SERVICE_NAME,
+        health.SERVICE_NAME,
     )
     reflection.enable_server_reflection(SERVICE_NAMES, server)
 

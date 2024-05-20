@@ -6,6 +6,7 @@ import logging
 import sys
 
 sys.path.append("/usr/app/protos")
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from datetime import datetime
 from google.protobuf.timestamp_pb2 import Timestamp
 import protos.budgeter_pb2 as budgeter_pb2
@@ -62,11 +63,22 @@ def budgeter_record_transactions(stub: budgeter_pb2_grpc.BudgeterStub):
         print("RecoredTransaction reply had no transactions_count")
 
 
+def health_check_call(stub: health_pb2_grpc.HealthStub):
+    request = health_pb2.HealthCheckRequest(service="Budgeter")
+    resp = stub.Check(request)
+    if resp.status == health_pb2.HealthCheckResponse.SERVING:
+        print("server is serving")
+    elif resp.status == health_pb2.HealthCheckResponse.NOT_SERVING:
+        print("server stopped serving")
+
+
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
     # of the code.
     with grpc.insecure_channel("server:50051") as channel:
+        health_stub = health_pb2_grpc.HealthStub(channel)
+        health_check_call(health_stub)
         stub = budgeter_pb2_grpc.BudgeterStub(channel)
         print("-------------- GetFeature --------------")
         budgeter_record_transactions(stub)
