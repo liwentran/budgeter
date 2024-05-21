@@ -1,17 +1,17 @@
 """The Python implementation of the gRPC budgeter server."""
 
-from concurrent import futures
 import logging
 import sys
-from time import sleep
 import threading
+from concurrent import futures
+from time import sleep
 
 import grpc
-from grpc_health.v1 import health, health_pb2, health_pb2_grpc
-import db
 import protos.budgeter_pb2 as budgeter_pb2
 import protos.budgeter_pb2_grpc as budgeter_pb2_grpc
+from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
+from server import db
 
 is_ready = False
 

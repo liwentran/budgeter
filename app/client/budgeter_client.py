@@ -6,12 +6,13 @@ import logging
 import sys
 
 sys.path.append("/usr/app/protos")
-from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 from datetime import datetime
-from google.protobuf.timestamp_pb2 import Timestamp
+
+import grpc
 import protos.budgeter_pb2 as budgeter_pb2
 import protos.budgeter_pb2_grpc as budgeter_pb2_grpc
-import grpc
+from google.protobuf.timestamp_pb2 import Timestamp
+from grpc_health.v1 import health_pb2, health_pb2_grpc
 
 
 def make_transaction(
