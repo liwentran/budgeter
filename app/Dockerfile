@@ -30,11 +30,7 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-# bundle the statically compiled grpc-health-probe
-RUN apt-get update && apt-get -y install lsof wget
-RUN GRPC_HEALTH_PROBE_VERSION=v0.4.13 && \
-    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
-    chmod +x /bin/grpc_health_probe
+RUN apt-get update 
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
@@ -44,15 +40,32 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=requirements.txt,target=requirements.txt \
     python -m pip install -r requirements.txt
 
+FROM base as budgeter-server
+
+# bundle the statically compiled grpc-health-probe
+RUN apt-get -y install lsof wget
+RUN GRPC_HEALTH_PROBE_VERSION=v0.4.13 && \
+    wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
+    chmod +x /bin/grpc_health_probe
+
 # Switch to the non-privileged user to run the application.
 USER appuser
 
-# Copy the source code into the container.
-COPY . .
+ENV PYTHONPATH=/app
 
+COPY protos ./protos
+COPY server ./server
 # Expose the port that the application listens on.
-# EXPOSE 8000
 EXPOSE 50051
 
-# Run the application.
-# CMD python3 -m flask run --host=0.0.0.0 --port=8000
+
+FROM base as budgeter-client
+
+ENV PYTHONPATH=/app
+
+# Copy the source code into the container.
+COPY protos ./protos
+COPY client ./client
+
+# Switch to the non-privileged user to run the application.
+USER appuser

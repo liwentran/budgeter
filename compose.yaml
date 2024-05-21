@@ -11,7 +11,8 @@ services:
   server:
     build:
       context: app
-    command: python3 /app/budgeter.py
+      target: budgeter-server
+    command: python3 /app/server/budgeter.py
     ports:
       - 50051:50051
     secrets:
@@ -34,7 +35,8 @@ services:
   client:
     build:
       context: app
-    command: python3 /app/budgeter_client.py
+      target: budgeter-client
+    command: python3 /app/client/budgeter_client.py
     depends_on:
       server:
         condition: service_healthy
